@@ -1,3 +1,4 @@
+import math
 import os
 import random
 import sys
@@ -33,23 +34,28 @@ def gameover(screen: pg.Surface) -> None:
     課題1：こうかとんと爆弾が衝突した際に画面をブラックアウトし、
     泣いているこうかとんと「Game Over」の文字列を5秒間表示する関数
     """
+    # 1-2. 黒い矩形用の空Surface作成と半透明設定
     black_out = pg.Surface((WIDTH, HEIGHT))
     black_out.fill((0, 0, 0))
     black_out.set_alpha(150)
     screen.blit(black_out, [0, 0])
 
+    # 3. 白文字でGame Overと書かれたフォントSurfaceを作成
     font = pg.font.Font(None, 80)
     txt = font.render("Game Over", True, (255, 255, 255))
     txt_rct = txt.get_rect(center=(WIDTH // 2, HEIGHT // 2))
 
+    # 4. 泣いているこうかとん画像をロード
     kk_img = pg.image.load("fig/8.png")
     kk_rct1 = kk_img.get_rect(center=(WIDTH // 2 - 200, HEIGHT // 2))
     kk_rct2 = kk_img.get_rect(center=(WIDTH // 2 + 200, HEIGHT // 2))
 
+    # 5. screen Surfaceに直接描画して文字とこうかとんをくっきり表示
     screen.blit(txt, txt_rct)
     screen.blit(kk_img, kk_rct1)
     screen.blit(kk_img, kk_rct2)
 
+    # 6. pg.display.update() したら time.sleep(5) する
     pg.display.update()
     time.sleep(5)
 
@@ -73,7 +79,8 @@ def get_kk_imgs() -> dict[tuple[int, int], pg.Surface]:
     """
     課題3：移動量タプルと対応する画像Surfaceの辞書を返す関数
     """
-    img_left = pg.transform.rotozoom(pg.image.load("fig/3.png"), 0, 0.9)
+    base_img = pg.image.load("fig/3.png")
+    img_left = pg.transform.rotozoom(base_img, 0, 0.9)
     img_right = pg.transform.flip(img_left, True, False)
 
     kk_dict = {
@@ -88,6 +95,25 @@ def get_kk_imgs() -> dict[tuple[int, int], pg.Surface]:
         (-5, +5): pg.transform.rotozoom(img_left, 45, 1.0),
     }
     return kk_dict
+
+
+def calc_orientation(
+    org: pg.Rect, dst: pg.Rect, current_xy: tuple[float, float]
+) -> tuple[float, float]:
+    """
+    課題4：爆弾(org)からこうかとん(dst)がある方向へ向かう速度ベクトル(vx, vy)を計算する関数
+    """
+    dx = dst.centerx - org.centerx
+    dy = dst.centery - org.centery
+    dist = math.hypot(dx, dy)
+
+    # 距離が300未満または重なっている場合は慣性を維持
+    if dist < 300 or dist == 0:
+        return current_xy
+
+    # ベクトルのノルムが√50になるように正規化
+    norm_factor = math.sqrt(50) / dist
+    return dx * norm_factor, dy * norm_factor
 
 
 def main():
@@ -107,7 +133,7 @@ def main():
     bb_rct = bb_img.get_rect()
     bb_rct.centerx = random.randint(0, WIDTH)
     bb_rct.centery = random.randint(0, HEIGHT)
-    vx, vy = +5, +5
+    vx, vy = +5, +5  # 初期速度
 
     clock = pg.time.Clock()
     tmr = 0
@@ -116,28 +142,34 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return
+
         screen.blit(bg_img, [0, 0])
 
-        # 課題1：衝突判定時にgameover関数を呼び出す
+        # 課題1：衝突判定時にgameover関数を実行
         if kk_rct.colliderect(bb_rct):
             gameover(screen)
             return
 
+        # キー入力と移動量の計算
         key_lst = pg.key.get_pressed()
         sum_mv = [0, 0]
         for k, tpl in DELTA.items():
             if key_lst[k]:
                 sum_mv[0] += tpl[0]
                 sum_mv[1] += tpl[1]
+
         kk_rct.move_ip(sum_mv)
         if check_bound(kk_rct) != (True, True):
             kk_rct.move_ip(-sum_mv[0], -sum_mv[1])
 
-        # 課題3：移動量タプルをキーとして適切な画像を取得し描画
+        # 課題3：移動量に応じた画像を取得・描画
         kk_img = kk_imgs[tuple(sum_mv)]
         screen.blit(kk_img, kk_rct)
 
-        # 課題2：tmrの値に応じて拡大率・加速度を選択・反映
+        # 課題4：こうかとんへの追従方向ベクトルを取得
+        vx, vy = calc_orientation(bb_rct, kk_rct, (vx, vy))
+
+        # 課題2：tmrの値に応じた拡大率・加速度の選択と反映
         idx = min(tmr // 500, 9)
         avx = vx * bb_accs[idx]
         avy = vy * bb_accs[idx]
@@ -151,8 +183,8 @@ def main():
             vx *= -1
         if not tate:
             vy *= -1
-        screen.blit(bb_img, bb_rct)
 
+        screen.blit(bb_img, bb_rct)
         pg.display.update()
         tmr += 1
         clock.tick(50)
