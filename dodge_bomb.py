@@ -14,7 +14,6 @@ DELTA = {
 }
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-
 def check_bound(rect: pg.Rect) -> tuple[bool, bool]:
     """
     引数：こうかとんまたは爆弾のRect
@@ -22,9 +21,9 @@ def check_bound(rect: pg.Rect) -> tuple[bool, bool]:
     画面内ならTrue／画面外ならFalse
     """
     yoko, tate = True, True
-    if rect.left < 0 or WIDTH < rect.right:  # 横方向判定
+    if rect.left < 0 or WIDTH < rect.right:
         yoko = False
-    if rect.top < 0 or HEIGHT < rect.bottom:  # 縦方向判定
+    if rect.top < 0 or HEIGHT < rect.bottom: 
         tate = False
     return yoko, tate
 
@@ -34,28 +33,24 @@ def gameover(screen: pg.Surface) -> None:
     課題1：こうかとんと爆弾が衝突した際に画面をブラックアウトし、
     泣いているこうかとんと「Game Over」の文字列を5秒間表示する関数
     """
-    # 1-2. 黒い矩形用の空Surface作成と半透明設定
+
     black_out = pg.Surface((WIDTH, HEIGHT))
     black_out.fill((0, 0, 0))
     black_out.set_alpha(150)
     screen.blit(black_out, [0, 0])
 
-    # 3. 白文字でGame Overと書かれたフォントSurfaceを作成
     font = pg.font.Font(None, 80)
     txt = font.render("Game Over", True, (255, 255, 255))
     txt_rct = txt.get_rect(center=(WIDTH // 2, HEIGHT // 2))
 
-    # 4. 泣いているこうかとん画像をロード
     kk_img = pg.image.load("fig/8.png")
     kk_rct1 = kk_img.get_rect(center=(WIDTH // 2 - 200, HEIGHT // 2))
     kk_rct2 = kk_img.get_rect(center=(WIDTH // 2 + 200, HEIGHT // 2))
 
-    # 5. screen Surfaceに直接描画して文字とこうかとんをくっきり表示
     screen.blit(txt, txt_rct)
     screen.blit(kk_img, kk_rct1)
     screen.blit(kk_img, kk_rct2)
 
-    # 6. pg.display.update() したら time.sleep(5) する
     pg.display.update()
     time.sleep(5)
 
@@ -107,11 +102,9 @@ def calc_orientation(
     dy = dst.centery - org.centery
     dist = math.hypot(dx, dy)
 
-    # 距離が300未満または重なっている場合は慣性を維持
     if dist < 300 or dist == 0:
         return current_xy
 
-    # ベクトルのノルムが√50になるように正規化
     norm_factor = math.sqrt(50) / dist
     return dx * norm_factor, dy * norm_factor
 
@@ -121,19 +114,17 @@ def main():
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load("fig/pg_bg.jpg")
 
-    # 課題3：こうかとん画像辞書の取得
     kk_imgs = get_kk_imgs()
     kk_img = kk_imgs[(0, 0)]
     kk_rct = kk_img.get_rect()
     kk_rct.center = 300, 200
 
-    # 課題2：爆弾Surfaceリストと加速度リストの取得
     bb_imgs, bb_accs = init_bb_imgs()
     bb_img = bb_imgs[0]
     bb_rct = bb_img.get_rect()
     bb_rct.centerx = random.randint(0, WIDTH)
     bb_rct.centery = random.randint(0, HEIGHT)
-    vx, vy = +5, +5  # 初期速度
+    vx, vy = +5, +5 
 
     clock = pg.time.Clock()
     tmr = 0
@@ -145,12 +136,10 @@ def main():
 
         screen.blit(bg_img, [0, 0])
 
-        # 課題1：衝突判定時にgameover関数を実行
         if kk_rct.colliderect(bb_rct):
             gameover(screen)
             return
 
-        # キー入力と移動量の計算
         key_lst = pg.key.get_pressed()
         sum_mv = [0, 0]
         for k, tpl in DELTA.items():
@@ -162,14 +151,11 @@ def main():
         if check_bound(kk_rct) != (True, True):
             kk_rct.move_ip(-sum_mv[0], -sum_mv[1])
 
-        # 課題3：移動量に応じた画像を取得・描画
         kk_img = kk_imgs[tuple(sum_mv)]
         screen.blit(kk_img, kk_rct)
 
-        # 課題4：こうかとんへの追従方向ベクトルを取得
         vx, vy = calc_orientation(bb_rct, kk_rct, (vx, vy))
 
-        # 課題2：tmrの値に応じた拡大率・加速度の選択と反映
         idx = min(tmr // 500, 9)
         avx = vx * bb_accs[idx]
         avy = vy * bb_accs[idx]
